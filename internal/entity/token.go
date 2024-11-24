@@ -14,7 +14,7 @@ type (
 		IpAddress      string
 		IssuedAt       time.Time
 		ExpiresAt      time.Time
-		Value          string
+		Value          string // contains raw token value before returning to handler
 	}
 
 	RefreshToken struct {
@@ -24,7 +24,7 @@ type (
 		IpAddress     string
 		IssuedAt      time.Time
 		ExpiresAt     time.Time
-		Value         string
+		Value         string // contains raw token value before returning to handler
 	}
 
 	AccessRefreshToken struct {

@@ -1,4 +1,4 @@
-package service
+package token
 
 import (
 	"jwt-token-generator/internal/config"
@@ -10,6 +10,6 @@ type Service struct {
 	storage *postgres.Storage
 }
 
-func New(cfg *config.Config, pg *postgres.Storage) *Service {
+func NewService(cfg *config.Config, pg *postgres.Storage) *Service {
 	return &Service{config: cfg, storage: pg}
 }
