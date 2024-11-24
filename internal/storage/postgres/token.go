@@ -51,12 +51,16 @@ func (s *Storage) SaveTokens(
 
 	br := tx.SendBatch(ctx, batch)
 	if err = br.Close(); err != nil {
-		_ = tx.Rollback(ctx)
+		if rbErr := tx.Rollback(ctx); rbErr != nil {
+			return fmt.Errorf("failed to commit and rollback tx: %w", errors.Join(err, rbErr))
+		}
 		return fmt.Errorf("failed to close batch operation: %w", err)
 	}
 
 	if err = tx.Commit(ctx); err != nil {
-		_ = tx.Rollback(ctx)
+		if rbErr := tx.Rollback(ctx); rbErr != nil {
+			return fmt.Errorf("failed to commit and rollback tx: %w", errors.Join(err, rbErr))
+		}
 		return fmt.Errorf("failed to commit tx: %w", err)
 	}
 
@@ -89,7 +93,7 @@ func (s *Storage) GetTokenById(ctx context.Context, tokenId uuid.UUID) (*entity.
 	return rt, nil
 }
 
-func (s *Storage) RemoveTokenById(ctx context.Context, refreshTokenId uuid.UUID) error {
+func (s *Storage) RemoveTokenPairByRefreshId(ctx context.Context, refreshTokenId uuid.UUID) error {
 	queryAccessToken := `
 			DELETE FROM access_tokens
 			WHERE refresh_token_id = $1`
@@ -114,6 +118,41 @@ func (s *Storage) RemoveTokenById(ctx context.Context, refreshTokenId uuid.UUID)
 
 	if err = tx.Commit(ctx); err != nil {
 		_ = tx.Rollback(ctx)
+		return fmt.Errorf("failed to commit tx: %w", err)
+	}
+
+	return nil
+}
+
+func (s *Storage) RemoveTokenPairByAccessId(ctx context.Context, userId, accessTokenId uuid.UUID) error {
+	queryAccessToken := `
+			DELETE FROM access_tokens
+			WHERE token_id = $1 AND user_id = $2`
+	queryRefreshToken := `
+			DELETE FROM refresh_tokens
+			WHERE access_token_id = $1 AND user_id = $2`
+
+	batch := &pgx.Batch{}
+	batch.Queue(queryAccessToken, accessTokenId, userId)
+	batch.Queue(queryRefreshToken, accessTokenId, userId)
+
+	tx, err := s.conn.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to begin tx: %w", err)
+	}
+
+	br := tx.SendBatch(ctx, batch)
+	if err = br.Close(); err != nil {
+		if rbErr := tx.Rollback(ctx); rbErr != nil {
+			return fmt.Errorf("failed to commit and rollback tx: %w", errors.Join(err, rbErr))
+		}
+		return fmt.Errorf("failed to close batch operation: %w", err)
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		if rbErr := tx.Rollback(ctx); rbErr != nil {
+			return fmt.Errorf("failed to commit and rollback tx: %w", errors.Join(err, rbErr))
+		}
 		return fmt.Errorf("failed to commit tx: %w", err)
 	}
 

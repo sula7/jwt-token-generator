@@ -7,7 +7,7 @@ import (
 
 	"jwt-token-generator/internal/config"
 	"jwt-token-generator/internal/server"
-	"jwt-token-generator/internal/service"
+	"jwt-token-generator/internal/service/token"
 	"jwt-token-generator/internal/storage/postgres"
 )
 
@@ -31,10 +31,10 @@ func main() {
 
 	defer pg.Close()
 
-	svc := service.New(cfg, pg)
-	go svc.TokenTruncater(ctx)
+	tokenSvc := token.NewService(cfg, pg)
+	go tokenSvc.TokenTruncater(ctx)
 
-	if err = server.Start(cfg, svc); err != nil {
+	if err = server.Start(cfg, tokenSvc); err != nil {
 		log.Error().Err(err).Msg("failed to start server")
 		return
 	}
